@@ -358,60 +358,114 @@ try {
     
     Write-Log "Found $($sessions.Count) user sessions"
     
-    # Process disconnected sessions
+    # Log session details summary
+    Write-Log "Session details summary:" -Level "INFO"
+    foreach ($session in $sessions) {
+        $isWhitelisted = Test-UserWhitelisted -Username $session.Username
+        $whitelistStatus = if ($isWhitelisted) { "WHITELISTED" } else { "not whitelisted" }
+        Write-Log "  • User: $($session.Username), State: $($session.State), Session ID: $($session.SessionId), $whitelistStatus" -Level "INFO"
+    }
+    
+    # Process sessions
     $disconnectedThreshold = New-TimeSpan -Minutes $config.DisconnectThresholdMinutes
     $now = Get-Date
     
+    # Session counters for summary
+    $activeCount = 0
+    $disconnectedCount = 0
+    $whitelistedCount = 0
+    $loggedOffCount = 0
+    $underThresholdCount = 0
     foreach ($session in $sessions) {
-        if ($session.State -eq "Disc") {
-            $username = $session.Username
-            $isWhitelisted = Test-UserWhitelisted -Username $username
+        $username = $session.Username
+        $sessionId = $session.SessionId
+        $isWhitelisted = Test-UserWhitelisted -Username $username
+        
+        # Calculate session duration and idle time for all users
+        $sessionDuration = $null
+        $idleDuration = $null
+        $timeDisplay = "unknown"
+        $logonTimeStr = "unknown"
+        
+        if ($session.LogonTime -ne $null) {
+            $sessionDuration = $now - $session.LogonTime
+            $idleDuration = Get-IdleDuration -IdleTime $session.IdleTime
+            $logonTimeStr = $session.LogonTime.ToString("yyyy-MM-dd HH:mm:ss")
             
-            # Determine if the session has been disconnected long enough
-            $disconnectedLongEnough = $false
-            
-            if ($session.LogonTime -ne $null) {
-                $sessionDuration = $now - $session.LogonTime
-                $idleDuration = Get-IdleDuration -IdleTime $session.IdleTime
-                
-                # If idle time is available, use it, otherwise use session duration
-                if ($idleDuration -gt [TimeSpan]::Zero) {
-                    $disconnectedLongEnough = $idleDuration -ge $disconnectedThreshold
-                    $timeDisplay = $idleDuration.ToString()
-                }
-                else {
-                    $disconnectedLongEnough = $sessionDuration -ge $disconnectedThreshold
-                    $timeDisplay = $sessionDuration.ToString()
-                }
-            }
-            else {
-                Write-Log "Unable to determine session duration for user $username (Session ID: $($session.SessionId))" -Level "WARNING"
-                continue
-            }
-            
-            # Log the disconnected session
-            if ($isWhitelisted) {
-                Write-Log "User $username is disconnected (Duration: $timeDisplay) but whitelisted - skipping" -Level "INFO"
-            }
-            else {
-                if ($disconnectedLongEnough) {
-                    # Log off the user
-                    try {
-                        Write-Log "Logging off user $username (Session ID: $($session.SessionId), Duration: $timeDisplay)" -Level "INFO"
-                        logoff $session.SessionId
-                        Write-Log "User $username has been logged off successfully" -Level "INFO"
-                    }
-                    catch {
-                        Write-Log "Failed to log off user ${username}: $($_.Exception.Message)" -Level "ERROR"
-                        $exitCode = 1
-                    }
-                }
-                else {
-                    Write-Log "User $username is disconnected but under threshold (Duration: $timeDisplay) - skipping" -Level "INFO"
-                }
+            # If idle time is available, use it, otherwise use session duration for display
+            if ($idleDuration -gt [TimeSpan]::Zero) {
+                $timeDisplay = $idleDuration.ToString()
+            } else {
+                $timeDisplay = $sessionDuration.ToString()
             }
         }
+        
+        # Log detailed information for all sessions
+        if ($session.State -eq "Active") {
+            Write-Log "User $username is active (Session ID: $sessionId, Logon Time: $logonTimeStr, Duration: $timeDisplay)" -Level "INFO"
+            $activeCount++
+        }
+        elseif ($session.State -eq "Disc") {
+            $disconnectedCount++
+            $disconnectedLongEnough = $false
+            
+            if ($sessionDuration -ne $null) {
+                # Determine if the session has been disconnected long enough
+                if ($idleDuration -gt [TimeSpan]::Zero) {
+                    $disconnectedLongEnough = $idleDuration -ge $disconnectedThreshold
+                } else {
+                    $disconnectedLongEnough = $sessionDuration -ge $disconnectedThreshold
+                }
+                
+                # Log detailed disconnected session info
+                Write-Log "User $username is disconnected (Session ID: $sessionId, Logon Time: $logonTimeStr, Duration: $timeDisplay)" -Level "INFO"
+                
+                # Process disconnected sessions
+                if ($isWhitelisted) {
+                    Write-Log "  → User $username is whitelisted - skipping" -Level "INFO"
+                    $whitelistedCount++
+                }
+                else {
+                    if ($disconnectedLongEnough) {
+                        # Log off the user
+                        try {
+                            Write-Log "  → Logging off user $username (Session exceeds threshold of $($config.DisconnectThresholdMinutes) minutes)" -Level "INFO"
+                            logoff $sessionId
+                            Write-Log "  → User $username has been logged off successfully" -Level "INFO"
+                            $loggedOffCount++
+                        }
+                        catch {
+                            Write-Log "  → Failed to log off user ${username}: $($_.Exception.Message)" -Level "ERROR"
+                            $exitCode = 1
+                        }
+                    }
+                    else {
+                        Write-Log "  → User $username is disconnected but under threshold ($timeDisplay < $($config.DisconnectThresholdMinutes) minutes) - skipping" -Level "INFO"
+                        $underThresholdCount++
+                    }
+                }
+            }
+            else {
+                Write-Log "Unable to determine session duration for user $username (Session ID: $sessionId)" -Level "WARNING"
+            }
+        }
+        else {
+            # Other states (e.g., "Conn" for connecting)
+            Write-Log "User $username has state '$($session.State)' (Session ID: $sessionId, Duration: $timeDisplay)" -Level "INFO"
+        }
     }
+    }
+    
+    # Log session summary
+    Write-Log "----- Session Processing Summary -----" -Level "INFO"
+    Write-Log "Total sessions found: $($sessions.Count)" -Level "INFO"
+    Write-Log "Active sessions: $activeCount" -Level "INFO"
+    Write-Log "Disconnected sessions: $disconnectedCount" -Level "INFO"
+    Write-Log "Actions taken:" -Level "INFO"
+    Write-Log "  • Users logged off: $loggedOffCount" -Level "INFO"
+    Write-Log "  • Whitelisted users skipped: $whitelistedCount" -Level "INFO"
+    Write-Log "  • Users under disconnect threshold: $underThresholdCount" -Level "INFO"
+    Write-Log "-----------------------------------" -Level "INFO"
     
     Write-Log "Script completed successfully"
 }
