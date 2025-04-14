@@ -1,0 +1,40 @@
+# Log files and directories
+logs/
+*.log
+LogOffDisconnected.log*
+
+# PowerShell module files
+*.psd1
+*.psm1
+*.nupkg
+*Module.ps1
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*~
+
+# Windows system files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# Visual Studio Code
+.vscode/
+.history/
+
+# Sensitive information
+*.key
+*.pem
+*.pfx
+*.p12
+*credentials*
+*Credentials*
+
+# Environment files
+.env
+.env.local
+
