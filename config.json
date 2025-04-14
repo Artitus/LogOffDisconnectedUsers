@@ -6,5 +6,5 @@
         "backupuser"
     ],
     "DisconnectThresholdMinutes": 60,
-    "LogFilePath": "L:\\Technology\\Helpdesk\\Helpdesk Scipts\\LogOffDisconnectedUsers\\logs\\LogOffDisconnected.log"
+    "LogFilePath": ".\\logs\\LogOffDisconnected.log"
 }
