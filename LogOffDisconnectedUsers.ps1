@@ -454,10 +454,8 @@ try {
             Write-Log "User $username has state '$($session.State)' (Session ID: $sessionId, Duration: $timeDisplay)" -Level "INFO"
         }
     }
-    }
     
     # Log session summary
-    Write-Log "----- Session Processing Summary -----" -Level "INFO"
     Write-Log "Total sessions found: $($sessions.Count)" -Level "INFO"
     Write-Log "Active sessions: $activeCount" -Level "INFO"
     Write-Log "Disconnected sessions: $disconnectedCount" -Level "INFO"
