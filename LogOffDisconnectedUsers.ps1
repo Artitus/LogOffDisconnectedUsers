@@ -279,8 +279,7 @@ function Show-UserWhitelistFormat {
         Write-Host "`nExample config.json:" -ForegroundColor Magenta
         $exampleConfig = @{
             WhitelistedUsers = @("admin", "serviceaccount", "jsmith", "masonherbel")
-            DisconnectThresholdMinutes = 60
-            LogFilePath = "L:\\path\\to\\logs\\LogOffDisconnected.log"
+            LogFilePath = ".\\logs\\LogOffDisconnected.log"
         } | ConvertTo-Json -Depth 3
         
         Write-Host $exampleConfig

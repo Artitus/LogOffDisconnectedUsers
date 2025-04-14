@@ -24,7 +24,7 @@ This script was designed to help manage user sessions on Windows systems by auto
 
 ## Installation
 
-1. Clone or download this repository to your preferred location (e.g., `L:\Technology\Helpdesk\Helpdesk Scipts\LogOffDisconnectedUsers`)
+1. Clone or download this repository to your preferred location (e.g., `C:\Scripts\LogOffDisconnectedUsers`)
 
 2. Ensure the script and config file are in the same directory:
    - `LogOffDisconnectedUsers.ps1` (main script)
@@ -50,7 +50,7 @@ The script uses a JSON configuration file (`config.json`) that should be in the 
         "masonherbel"
     ],
     "DisconnectThresholdMinutes": 60,
-    "LogFilePath": "L:\\Technology\\Helpdesk\\Helpdesk Scipts\\LogOffDisconnectedUsers\\logs\\LogOffDisconnected.log"
+    "LogFilePath": ".\\logs\\LogOffDisconnected.log"
 }
 ```
 
@@ -95,7 +95,7 @@ To view the current username format for the whitelist:
    - Trigger: Daily or at your preferred schedule
    - Action: Start a program
      * Program/script: `powershell.exe`
-     * Arguments: `-ExecutionPolicy Bypass -File "L:\path\to\LogOffDisconnectedUsers.ps1"`
+     * Arguments: `-ExecutionPolicy Bypass -File "C:\path\to\LogOffDisconnectedUsers.ps1"`
    - Settings:
      * Allow task to be run on demand: Yes
      * Run task as soon as possible after a scheduled start is missed: Yes
